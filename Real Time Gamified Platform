@@ -1,0 +1,138 @@
+
+gamified-learning-platform/
+│
+├── backend/
+│   ├── app.js
+│   ├── models/
+│   ├── routes/
+│   ├── controllers/
+│   └── socket.js
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   ├── App.js
+│   ├── index.js
+│   └── components/
+│
+└── README.md
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
+app.use(cors());
+app.use(express.json());
+
+// MongoDB connection
+mongoose.connect('mongodb://localhost:27017/gamifiedLearning', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
+// Routes
+const quizRoutes = require('./routes/quiz');
+app.use('/api/quiz', quizRoutes);
+
+// Socket.io for real-time communication
+io.on('connection', (socket) => {
+    console.log('New client connected');
+
+    socket.on('joinGame', (data) => {
+        // Handle user joining a game
+    });
+
+    socket.on('answer', (data) => {
+        // Handle user submitting an answer
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const express = require('express');
+const router = express.Router();
+const Quiz = require('../models/Quiz');
+
+// Get all quizzes
+router.get('/', async (req, res) => {
+    try {
+        const quizzes = await Quiz.find();
+        res.json(quizzes);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+module.exports = router;
+const mongoose = require('mongoose');
+
+const QuizSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    questions: [
+        {
+            question: { type: String, required: true },
+            options: [{ type: String, required: true }],
+            correctOption: { type: String, required: true }
+        }
+    ]
+});
+
+module.exports = mongoose.model('Quiz', QuizSchema);
+import React, { useEffect, useState } from 'react';
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:5000');
+
+function App() {
+    const [quizzes, setQuizzes] = useState([]);
+    const [currentQuiz, setCurrentQuiz] = useState(null);
+    const [score, setScore] = useState(0);
+
+    useEffect(() => {
+        fetch('http://localhost:5000/api/quiz')
+            .then(res => res.json())
+            .then(data => setQuizzes(data));
+    }, []);
+
+    const joinGame = (quiz) => {
+        setCurrentQuiz(quiz);
+        socket.emit('joinGame', { quizId: quiz._id });
+    };
+
+    const submitAnswer = (answer) => {
+        socket.emit('answer', { answer });
+        // Logic to update score or move to next question
+    };
+
+    return (
+        <div className="App">
+            {!currentQuiz ? (
+                <div>
+                    <h1>Select a Quiz</h1>
+                    {quizzes.map(quiz => (
+                        <button key={quiz._id} onClick={() => joinGame(quiz)}>
+                            {quiz.title}
+                        </button>
+                    ))}
+                </div>
+            ) : (
+                <div>
+                    <h1>{currentQuiz.title}</h1>
+                    {/* Render quiz questions and options */}
+                    {/* Add button to submit answer */}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default App;
